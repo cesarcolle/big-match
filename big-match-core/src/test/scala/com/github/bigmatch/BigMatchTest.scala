@@ -43,6 +43,4 @@ trait BigMatchTest {
 
   def withTmpHadoopFolder(test : org.apache.hadoop.fs.Path => Unit) =
     test(new org.apache.hadoop.fs.Path(Files.createTempDirectory("").toString))
-
-
 }

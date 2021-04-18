@@ -8,21 +8,47 @@ import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.search.{IndexSearcher, Query, ScoreDoc}
 import org.apache.solr.store.hdfs.HdfsDirectory
 import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, Period}
 
 import scala.annotation.tailrec
 
 object BigMatchSearch {
 
-  def search[A <: Indexable : Encoder](query: Query,
+  def searchTimeline[A <: Indexable : Encoder](query: Query,
                                        spark: SparkSession,
                                        baseInputPath: Path,
                                        batch: Int,
-                                       transform: Document => A) = {
+                                       calcEnd: DateTime,
+                                       calcStart: DateTime,
+                                       transform: Document => A
+                                      ): Option[Dataset[A]] = {
+    val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+    val calcStartStr = UsualDateFormat.usualDateFormat.print(calcStart)
+    val calcEndStr = UsualDateFormat.usualDateFormat.print(calcEnd)
+
+    val paths = fs.listStatus(baseInputPath).filter{ p =>
+      val datePartition = p.getPath.getName
+
+      datePartition <= calcEndStr && datePartition >= calcStartStr
+    }
+    if (paths.isEmpty){
+      None
+    } else {
+      paths.flatMap(partiton => search[A](query, spark, partiton.getPath, batch, transform))
+        .reduceOption(_ union _)
+    }
+
+  }
+
+  def search[A <: Indexable : Encoder](query: Query,
+                                       spark: SparkSession,
+                                       pathToSearch: Path,
+                                       batch: Int,
+                                       transform: Document => A): Option[Dataset[A]] = {
     val hadoopConf = spark.sparkContext.hadoopConfiguration
 
     val fs = FileSystem.get(hadoopConf)
-    val files = fs.listStatus(baseInputPath)
+    val files = fs.listStatus(pathToSearch)
     val matchedDocs = files.flatMap { indexPath =>
       if (indexPath.isDirectory) {
         val hdfsDir = new HdfsDirectory(indexPath.getPath, hadoopConf)

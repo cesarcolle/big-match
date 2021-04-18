@@ -46,7 +46,6 @@ object BigMatchIndexer extends Logging {
         val baseIndexPath = new Path(getDirectory(baseOutputPath.toString, p.head.date))
         val id = if (fileExists(baseIndexPath)) {
           val indexes = getFiles(baseIndexPath)
-          logError("indexes" + indexes.map(_.getPath).toSeq)
           findOrCreateIndex(indexes, baseIndexPath, serHadoopConfiguration, maxDocIndex, p.length)
         } else {
           mkDirs(baseIndexPath)
