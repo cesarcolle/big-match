@@ -1,11 +1,11 @@
-package com.github.bigmatch.indexer
+package com.github.bigmatch.indexer.input
 
 import com.github.bigmatch.index.{BigMatchIndexer, Indexable}
-import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
 import org.apache.hadoop.fs.Path
+import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
 import org.joda.time.DateTime
 
-abstract class BigMatchIndexerJob[A  <: Indexable : Encoder] {
+abstract class BigMatchTimeSeriesInputJob[A  <: Indexable : Encoder] {
 
   def input(start: DateTime, end: DateTime) : Dataset[A]
   def outputPath : Path
